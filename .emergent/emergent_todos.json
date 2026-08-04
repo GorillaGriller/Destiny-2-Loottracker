@@ -1,27 +1,27 @@
 [
   {
-    "content": "Phase 1 POC: Manifest download + name->hash resolution for curated raid+dungeon sample",
-    "status": "in_progress"
+    "content": "Phase 1 POC: Manifest download + name->hash resolution",
+    "status": "completed"
   },
   {
-    "content": "Phase 1 POC: Verify ~100% resolution coverage with real icons; handle duplicate-name/Dummy pitfall",
-    "status": "pending"
+    "content": "Phase 1 POC: Verify coverage with real icons; handle Dummy pitfall",
+    "status": "completed"
   },
   {
-    "content": "Phase 2: Curated loot dataset for major raids + dungeons (+ nightfall/world)",
-    "status": "pending"
+    "content": "Phase 2: Curated loot dataset + resolve via manifest to resolved_loot.json",
+    "status": "completed"
   },
   {
-    "content": "Phase 2: Backend ingestion service + Mongo caching + APIs (/api)",
-    "status": "pending"
+    "content": "Phase 2: Backend seed-from-JSON + Mongo + APIs (/api)",
+    "status": "completed"
   },
   {
     "content": "Phase 2: Destiny-themed frontend (browse/activity/search/filter/checklist/favorites)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: End-to-end testing via testing agent",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 3+: Expand dataset, optional auth sync, polish",
