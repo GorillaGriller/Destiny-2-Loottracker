@@ -1,18 +1,10 @@
 [
   {
-    "content": "Phase 3: Explore manifest sources for Nightfall / Exotic Mission / World loot",
+    "content": "Phase 3: World & Nightfall loot tables (22 activities, 546 items)",
     "status": "completed"
   },
   {
-    "content": "Phase 3: Expand curated dataset with Nightfall + World/Exotic Mission activities; re-ingest (22 activities, 546 items)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Backend + frontend support for new activity types (nightfall/world tabs)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Live Manifest Refresh - backend re-ingest endpoint + frontend one-tap button",
+    "content": "Phase 3: Live Manifest Refresh (backend + one-tap button)",
     "status": "completed"
   },
   {
@@ -20,11 +12,11 @@
     "status": "completed"
   },
   {
-    "content": "Phase 4: Account Sync - email/password JWT auth + server-side checklist/favorites + local merge",
+    "content": "Phase 4: Account Sync (JWT auth + cross-device checklist/favorites sync)",
     "status": "completed"
   },
   {
-    "content": "Phase 3/4: End-to-end testing via testing agent",
-    "status": "in_progress"
+    "content": "Phase 3/4: End-to-end testing via testing agent (BE 100%, FE 95%, no functional bugs)",
+    "status": "completed"
   }
 ]
