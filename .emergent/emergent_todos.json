@@ -4,7 +4,7 @@
     "status": "completed"
   },
   {
-    "content": "Merge Prompt on Google/email sign-in (ask before merging local into account)",
+    "content": "Merge Prompt on sign-in (ask before merging local into account)",
     "status": "completed"
   },
   {
@@ -16,7 +16,7 @@
     "status": "completed"
   },
   {
-    "content": "End-to-end testing via testing agent (4 features + regression)",
-    "status": "in_progress"
+    "content": "End-to-end testing via testing agent (4 features + regression, 100% pass)",
+    "status": "completed"
   }
 ]
