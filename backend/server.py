@@ -12,11 +12,12 @@ import subprocess
 import sys
 import threading
 import time
+import requests
 from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, HTTPException, Query, Header, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Header, Depends, Request, Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
@@ -372,18 +373,42 @@ def _make_token(uid: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
-async def current_user(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Not authenticated")
-    token = authorization.split(" ", 1)[1]
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    except Exception:
-        raise HTTPException(401, "Invalid or expired token")
-    user = await db.users.find_one({"id": payload.get("sub")})
-    if not user:
-        raise HTTPException(401, "User not found")
-    return user
+async def current_user(request: Request, authorization: Optional[str] = Header(None)):
+    """Accept either an Emergent session_token (cookie or Bearer) or a legacy JWT (Bearer)."""
+    header_token = None
+    if authorization and authorization.startswith("Bearer "):
+        header_token = authorization.split(" ", 1)[1]
+    cookie_token = request.cookies.get("session_token")
+
+    # 1) Session-token auth (Google / Emergent) — cookie first, then header
+    for t in (cookie_token, header_token):
+        if not t:
+            continue
+        sess = await db.user_sessions.find_one({"session_token": t}, {"_id": 0})
+        if not sess:
+            continue
+        exp = sess.get("expires_at")
+        if isinstance(exp, str):
+            exp = datetime.fromisoformat(exp)
+        if exp and exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp and exp < datetime.now(timezone.utc):
+            continue
+        u = await db.users.find_one({"id": sess["user_id"]}, {"_id": 0})
+        if u:
+            return u
+
+    # 2) Legacy JWT auth (email/password)
+    if header_token:
+        try:
+            payload = jwt.decode(header_token, JWT_SECRET, algorithms=["HS256"])
+            u = await db.users.find_one({"id": payload.get("sub")}, {"_id": 0})
+            if u:
+                return u
+        except Exception:
+            pass
+
+    raise HTTPException(401, "Not authenticated")
 
 
 async def _get_or_create_data(uid: str):
@@ -420,7 +445,67 @@ async def login(body: LoginBody):
 
 @api_router.get("/auth/me")
 async def me(user=Depends(current_user)):
-    return {"id": user["id"], "email": user["email"]}
+    return {"id": user["id"], "email": user["email"],
+            "name": user.get("name"), "picture": user.get("picture")}
+
+
+# ---- Emergent managed Google sign-in --------------------------------------
+EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+
+class SessionBody(BaseModel):
+    session_id: str
+
+
+@api_router.post("/auth/session")
+async def auth_session(body: SessionBody, response: Response):
+    """Exchange an Emergent session_id for user data + a persistent session cookie."""
+    try:
+        r = requests.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": body.session_id}, timeout=15)
+    except Exception:
+        raise HTTPException(502, "Auth provider unreachable")
+    if r.status_code != 200:
+        raise HTTPException(401, "Invalid or expired Google session")
+    data = r.json()
+    email = (data.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(400, "No email returned from provider")
+
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        uid = existing["id"]
+        await db.users.update_one({"id": uid}, {"$set": {
+            "name": data.get("name") or existing.get("name"),
+            "picture": data.get("picture") or existing.get("picture"),
+        }})
+    else:
+        uid = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "id": uid, "email": email, "name": data.get("name"), "picture": data.get("picture"),
+            "auth_provider": "google", "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        await _get_or_create_data(uid)
+
+    session_token = data["session_token"]
+    expires = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.update_one(
+        {"session_token": session_token},
+        {"$set": {"session_token": session_token, "user_id": uid,
+                  "expires_at": expires.isoformat(), "created_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    response.set_cookie("session_token", session_token, httponly=True, secure=True,
+                        samesite="none", path="/", max_age=7 * 24 * 3600)
+    return {"user": {"id": uid, "email": email, "name": data.get("name"), "picture": data.get("picture")}}
+
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, response: Response):
+    t = request.cookies.get("session_token")
+    if t:
+        await db.user_sessions.delete_one({"session_token": t})
+    response.delete_cookie("session_token", path="/")
+    return {"ok": True}
 
 
 @api_router.get("/user/data")
@@ -469,6 +554,7 @@ async def _startup():
         await db.users.create_index("email", unique=True)
         await db.users.create_index("id", unique=True)
         await db.user_data.create_index("user_id", unique=True)
+        await db.user_sessions.create_index("session_token", unique=True)
     except Exception as e:
         logger.warning("index creation: %s", e)
     await seed_mongo()

@@ -1,22 +1,10 @@
 [
   {
-    "content": "Phase 3: World & Nightfall loot tables (22 activities, 546 items)",
-    "status": "completed"
+    "content": "Add Emergent managed Google sign-in (backend session exchange + unified auth + frontend button/callback)",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 3: Live Manifest Refresh (backend + one-tap button)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Farming Targets 'what I still need' view",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 4: Account Sync (JWT auth + cross-device checklist/favorites sync)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3/4: End-to-end testing via testing agent (BE 100%, FE 95%, no functional bugs)",
-    "status": "completed"
+    "content": "Test Google auth (cookie session) + regression on JWT/sync via testing agent",
+    "status": "pending"
   }
 ]

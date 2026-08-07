@@ -52,7 +52,10 @@ export const Header = () => {
 
         {user ? (
           <div className="flex items-center gap-2">
-            <span data-testid="header-user-email" className="hidden max-w-[140px] truncate text-xs text-muted-foreground sm:inline">{user.email}</span>
+            {user.picture ? (
+              <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full border border-white/15 object-cover" />
+            ) : null}
+            <span data-testid="header-user-email" className="hidden max-w-[150px] truncate text-xs text-muted-foreground sm:inline">{user.name || user.email}</span>
             <Button variant="ghost" size="icon" data-testid="logout-button" aria-label="Sign out" onClick={logout} className="h-8 w-8">
               <LogOut size={15} />
             </Button>

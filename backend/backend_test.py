@@ -1,12 +1,14 @@
 """
-Backend API tests for Destiny 2 Boss Drops application (Phase 3+4).
-Tests all endpoints including new World/Nightfall activities, Live Refresh, and Auth/Sync.
+Backend API tests for Destiny 2 Boss Drops application (Phase 3+4+5).
+Tests all endpoints including new World/Nightfall activities, Live Refresh, Auth/Sync, and Emergent Google Auth.
 """
 import requests
 import sys
 import time
 import uuid
+import subprocess
 from pathlib import Path
+from datetime import datetime
 
 # Read the public URL from frontend/.env
 env_path = Path(__file__).parent.parent / "frontend" / ".env"
@@ -85,7 +87,7 @@ class D2APITester:
 
     def run_all_tests(self):
         print("\n" + "="*70)
-        print("BACKEND API TESTS - PHASE 3+4 (World/Nightfall + Refresh + Auth/Sync)")
+        print("BACKEND API TESTS - PHASE 3+4+5 (World/Nightfall + Refresh + Auth + Google)")
         print("="*70 + "\n")
 
         # ========== PHASE 3: World & Nightfall Activities ==========
@@ -389,6 +391,218 @@ class D2APITester:
         )
         if success and sync_data:
             print(f"   ✓ After sync: obtained={len(sync_data.get('obtained', []))}")
+
+        # ========== PHASE 5: Emergent Google Auth ==========
+        print("\n📋 Testing Phase 5: Emergent Google Auth (session_token)...")
+        
+        # Create a test user + session directly in Mongo (simulating Google login)
+        print("   🔧 Creating test Google user + session in Mongo...")
+        mongo_script = """
+use('test_database');
+var userId = 'user_' + Date.now();
+var sessionToken = 'test_session_' + Date.now();
+db.users.insertOne({ 
+    id: userId, 
+    email: 'test.google.' + Date.now() + '@example.com', 
+    name: 'Test Google User', 
+    picture: 'https://via.placeholder.com/150', 
+    auth_provider: 'google', 
+    created_at: new Date().toISOString() 
+});
+db.user_data.insertOne({ 
+    user_id: userId, 
+    obtained: [], 
+    fav_items: [], 
+    fav_activities: [] 
+});
+db.user_sessions.insertOne({ 
+    session_token: sessionToken, 
+    user_id: userId, 
+    expires_at: new Date(Date.now() + 7*24*60*60*1000).toISOString(), 
+    created_at: new Date().toISOString() 
+});
+print('SESSION_TOKEN:' + sessionToken);
+print('USER_ID:' + userId);
+"""
+        try:
+            result = subprocess.run(
+                ["mongosh", "--quiet", "--eval", mongo_script],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode != 0:
+                print(f"   ❌ Failed to create test Google user: {result.stderr}")
+                google_session_token = None
+                google_user_id = None
+            else:
+                # Parse output to extract session_token and user_id
+                lines = result.stdout.strip().split('\n')
+                google_session_token = None
+                google_user_id = None
+                for line in lines:
+                    if line.startswith('SESSION_TOKEN:'):
+                        google_session_token = line.split(':', 1)[1].strip()
+                    elif line.startswith('USER_ID:'):
+                        google_user_id = line.split(':', 1)[1].strip()
+                
+                if google_session_token and google_user_id:
+                    print(f"   ✓ Created Google user: {google_user_id}")
+                    print(f"   ✓ Session token: {google_session_token[:20]}...")
+                else:
+                    print(f"   ❌ Failed to parse session_token/user_id from output")
+        except Exception as e:
+            print(f"   ❌ Error creating test Google user: {e}")
+            google_session_token = None
+            google_user_id = None
+        
+        # Test 19: GET /api/auth/me with session_token (Bearer)
+        if google_session_token:
+            success, me_google = self.test(
+                "GET /api/auth/me (with session_token Bearer)",
+                "GET",
+                "auth/me",
+                headers={"Authorization": f"Bearer {google_session_token}"},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_in("id", d, "should have id"),
+                    assert_in("email", d, "should have email"),
+                    assert_in("name", d, "should have name"),
+                    assert_eq(d.get("name"), "Test Google User", "should be Test Google User"),
+                )
+            )
+            if success and me_google:
+                print(f"   ✓ Google user authenticated: {me_google.get('email')}")
+        
+        # Test 20: GET /api/user/data with session_token
+        if google_session_token:
+            success, google_data = self.test(
+                "GET /api/user/data (with session_token)",
+                "GET",
+                "user/data",
+                headers={"Authorization": f"Bearer {google_session_token}"},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_in("obtained", d, "should have obtained"),
+                    assert_in("fav_items", d, "should have fav_items"),
+                    assert_in("fav_activities", d, "should have fav_activities"),
+                )
+            )
+        
+        # Test 21: PUT /api/user/data with session_token
+        if google_session_token:
+            google_obtained = ["9999999999", "8888888888"]
+            success, google_put = self.test(
+                "PUT /api/user/data (with session_token)",
+                "PUT",
+                "user/data",
+                headers={"Authorization": f"Bearer {google_session_token}"},
+                data={"obtained": google_obtained, "fav_items": ["7777777777"], "fav_activities": ["kings_fall"]},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_eq(len(d.get("obtained", [])), 2, "should have 2 obtained"),
+                    assert_in("9999999999", d.get("obtained", []), "should have test item"),
+                )
+            )
+        
+        # Test 22: POST /api/auth/session with invalid session_id (should 401)
+        self.test(
+            "POST /api/auth/session (invalid session_id - 401)",
+            "POST",
+            "auth/session",
+            data={"session_id": "invalid_session_id_12345"},
+            expected_status=401,
+            use_auth=False
+        )
+        
+        # Test 23: POST /api/auth/logout (delete session)
+        if google_session_token:
+            # First, verify the session works
+            success_before, _ = self.test(
+                "GET /api/auth/me (before logout)",
+                "GET",
+                "auth/me",
+                headers={"Authorization": f"Bearer {google_session_token}"},
+                use_auth=False,
+                validate=lambda d: assert_in("id", d, "should have id")
+            )
+            
+            # Logout (note: logout expects session_token in cookie, but we'll test with header)
+            # Since we can't set cookies in requests easily, we'll just verify the endpoint exists
+            # and returns ok (it won't actually delete our session since it's not in a cookie)
+            success_logout, _ = self.test(
+                "POST /api/auth/logout (returns ok)",
+                "POST",
+                "auth/logout",
+                use_auth=False,
+                validate=lambda d: assert_eq(d.get("ok"), True, "should return ok=True")
+            )
+            
+            # Note: We can't fully test session deletion via Bearer token since logout
+            # only deletes sessions from cookies. This is a limitation of the test.
+            print("   ⚠️  Note: Full session deletion test requires cookie support")
+        
+        # Test 24: REGRESSION - Email/password auth still works
+        print("\n📋 Testing Regression: Email/Password Auth Still Works...")
+        
+        # Login with guardian@test.com
+        success, jwt_login = self.test(
+            "POST /api/auth/login (guardian@test.com - JWT)",
+            "POST",
+            "auth/login",
+            data={"email": "guardian@test.com", "password": "vanguard123"},
+            use_auth=False,
+            validate=lambda d: (
+                assert_in("token", d, "should return JWT token"),
+                assert_in("user", d, "should return user"),
+            )
+        )
+        
+        jwt_token = None
+        if success and jwt_login:
+            jwt_token = jwt_login.get("token")
+            print(f"   ✓ JWT login successful")
+        
+        # GET /api/auth/me with JWT
+        if jwt_token:
+            success, jwt_me = self.test(
+                "GET /api/auth/me (with JWT Bearer)",
+                "GET",
+                "auth/me",
+                headers={"Authorization": f"Bearer {jwt_token}"},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_in("id", d, "should have id"),
+                    assert_eq(d.get("email"), "guardian@test.com", "should be guardian@test.com"),
+                )
+            )
+        
+        # GET /api/user/data with JWT
+        if jwt_token:
+            success, jwt_data = self.test(
+                "GET /api/user/data (with JWT)",
+                "GET",
+                "user/data",
+                headers={"Authorization": f"Bearer {jwt_token}"},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_in("obtained", d, "should have obtained"),
+                )
+            )
+        
+        # POST /api/user/sync with JWT
+        if jwt_token:
+            success, jwt_sync = self.test(
+                "POST /api/user/sync (with JWT)",
+                "POST",
+                "user/sync",
+                headers={"Authorization": f"Bearer {jwt_token}"},
+                data={"obtained": ["5555555555"], "fav_items": [], "fav_activities": []},
+                use_auth=False,
+                validate=lambda d: (
+                    assert_in("obtained", d, "should have obtained"),
+                )
+            )
 
         # ========== Regression Tests ==========
         print("\n📋 Testing Regression: Existing Features...")

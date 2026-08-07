@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-export const api = axios.create({ baseURL: BASE });
+export const api = axios.create({ baseURL: BASE, withCredentials: true });
 
 // Attach JWT (if signed in) to every request
 api.interceptors.request.use((config) => {
