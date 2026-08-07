@@ -1,30 +1,30 @@
 [
   {
-    "content": "Phase 1 POC: Manifest download + name->hash resolution",
+    "content": "Phase 3: Explore manifest sources for Nightfall / Exotic Mission / World loot",
     "status": "completed"
   },
   {
-    "content": "Phase 1 POC: Verify coverage with real icons; handle Dummy pitfall",
+    "content": "Phase 3: Expand curated dataset with Nightfall + World/Exotic Mission activities; re-ingest (22 activities, 546 items)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Curated loot dataset + resolve via manifest to resolved_loot.json",
+    "content": "Phase 3: Backend + frontend support for new activity types (nightfall/world tabs)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Backend seed-from-JSON + Mongo + APIs (/api)",
+    "content": "Phase 3: Live Manifest Refresh - backend re-ingest endpoint + frontend one-tap button",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Destiny-themed frontend (browse/activity/search/filter/checklist/favorites)",
+    "content": "Phase 3: Farming Targets 'what I still need' view",
     "status": "completed"
   },
   {
-    "content": "Phase 2: End-to-end testing via testing agent (100% pass)",
+    "content": "Phase 4: Account Sync - email/password JWT auth + server-side checklist/favorites + local merge",
     "status": "completed"
   },
   {
-    "content": "Phase 3+: Expand dataset, optional auth sync, polish",
-    "status": "pending"
+    "content": "Phase 3/4: End-to-end testing via testing agent",
+    "status": "in_progress"
   }
 ]

@@ -1,13 +1,18 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Search, Hexagon, ListChecks } from "lucide-react";
+import { Search, Hexagon, ListChecks, LogOut, User as UserIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { AuthDialog } from "@/components/AuthDialog";
 
 export const Header = () => {
   const [q, setQ] = useState("");
+  const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
   const { obtained } = useStore();
+  const { user, logout } = useAuth();
 
   const submit = (e) => {
     e.preventDefault();
@@ -28,6 +33,7 @@ export const Header = () => {
         <nav className="ml-2 hidden items-center gap-5 md:flex">
           <NavLink to="/activities" className={linkCls} data-testid="nav-activities-link">Activities</NavLink>
           <NavLink to="/search" className={linkCls} data-testid="nav-search-link">Search</NavLink>
+          <NavLink to="/targets" className={linkCls} data-testid="nav-targets-link">Targets</NavLink>
           <NavLink to="/checklist" className={linkCls} data-testid="nav-checklist-link">Checklist</NavLink>
         </nav>
 
@@ -43,7 +49,21 @@ export const Header = () => {
           <ListChecks size={14} className="text-[hsl(var(--primary))]" />
           <span className="font-mono">{obtained.length}</span>
         </Link>
+
+        {user ? (
+          <div className="flex items-center gap-2">
+            <span data-testid="header-user-email" className="hidden max-w-[140px] truncate text-xs text-muted-foreground sm:inline">{user.email}</span>
+            <Button variant="ghost" size="icon" data-testid="logout-button" aria-label="Sign out" onClick={logout} className="h-8 w-8">
+              <LogOut size={15} />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" size="sm" data-testid="signin-button" onClick={() => setAuthOpen(true)} className="gap-1.5">
+            <UserIcon size={14} /> Sign In
+          </Button>
+        )}
       </div>
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
     </header>
   );
 };

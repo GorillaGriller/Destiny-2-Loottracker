@@ -22,10 +22,12 @@ export default function Activities() {
       <p className="mt-2 max-w-2xl text-muted-foreground">Pick a raid or dungeon to see every boss and the loot it drops.</p>
 
       <Tabs value={tab} onValueChange={setTab} className="mt-6">
-        <TabsList data-testid="activities-tabs" className="rounded-xl border border-white/10 bg-white/5 p-1">
+        <TabsList data-testid="activities-tabs" className="flex flex-wrap rounded-xl border border-white/10 bg-white/5 p-1">
           <TabsTrigger value="all" data-testid="activities-tab-all">All</TabsTrigger>
           <TabsTrigger value="raid" data-testid="activities-tab-raids">Raids</TabsTrigger>
           <TabsTrigger value="dungeon" data-testid="activities-tab-dungeons">Dungeons</TabsTrigger>
+          <TabsTrigger value="nightfall" data-testid="activities-tab-nightfall">Nightfall</TabsTrigger>
+          <TabsTrigger value="world" data-testid="activities-tab-world">World</TabsTrigger>
         </TabsList>
       </Tabs>
 

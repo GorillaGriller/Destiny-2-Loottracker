@@ -8,13 +8,22 @@ into backend/data/resolved_loot.json by scripts/ingest.py (no API key needed).
 import json
 import logging
 import os
+import subprocess
+import sys
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Header, Depends
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr, Field
+import uuid
+import bcrypt
+import jwt
+from datetime import datetime, timezone, timedelta
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -78,6 +87,34 @@ def load_dataset():
 
 
 load_dataset()
+
+# ----------------------------------------------------------------------------
+# Live manifest refresh (re-runs the ingestion script in a background thread)
+# ----------------------------------------------------------------------------
+INGEST_SCRIPT = ROOT_DIR.parent / "scripts" / "ingest.py"
+REFRESH = {"state": "idle", "message": "", "updated_at": None}
+
+
+def _refresh_worker():
+    try:
+        REFRESH.update(state="running", message="Fetching latest Bungie manifest\u2026")
+        proc = subprocess.run(
+            [sys.executable, str(INGEST_SCRIPT)],
+            capture_output=True, text=True, timeout=1800,
+        )
+        if proc.returncode != 0:
+            REFRESH.update(state="error", message=(proc.stderr or "Ingestion failed")[-400:])
+            logger.error("Refresh ingest failed: %s", proc.stderr[-1000:])
+            return
+        load_dataset()
+        REFRESH.update(state="done",
+                       message=f"Up to date \u00b7 {len(ITEMS)} items across {len(ACTIVITIES)} activities",
+                       updated_at=time.time())
+        logger.info("Refresh complete: manifest %s", DATA.get("manifest_version"))
+    except Exception as e:  # noqa
+        REFRESH.update(state="error", message=str(e))
+        logger.exception("Refresh worker crashed")
+
 
 
 async def seed_mongo():
@@ -176,7 +213,7 @@ async def filters():
         "weapon_types": sorted(weapon_types),
         "armor_types": sorted(armor_types),
         "classes": sorted(classes),
-        "activity_types": ["raid", "dungeon"],
+        "activity_types": sorted({a["type"] for a in ACTIVITIES}),
     }
 
 
@@ -278,6 +315,143 @@ async def get_item(item_hash: str):
     return {**i, "sources": ITEM_TO_ACTIVITIES.get(item_hash, [])}
 
 
+@api_router.post("/refresh")
+async def refresh():
+    if REFRESH["state"] == "running":
+        return {"state": "running", "message": REFRESH["message"]}
+    REFRESH.update(state="running", message="Starting\u2026")
+    threading.Thread(target=_refresh_worker, daemon=True).start()
+    return {"state": "running", "message": "Refresh started"}
+
+
+@api_router.get("/refresh/status")
+async def refresh_status():
+    return {
+        **REFRESH,
+        "manifest_version": DATA.get("manifest_version"),
+        "items": len(ITEMS),
+        "activities": len(ACTIVITIES),
+    }
+
+
+# ----------------------------------------------------------------------------
+# Auth + per-user sync (email/password + JWT)
+# ----------------------------------------------------------------------------
+JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
+
+
+class RegisterBody(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+
+
+class LoginBody(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class SyncBody(BaseModel):
+    obtained: list = []
+    fav_items: list = []
+    fav_activities: list = []
+
+
+def _hash_pw(pw: str) -> str:
+    return bcrypt.hashpw(pw.encode("utf-8")[:72], bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_pw(pw: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(pw.encode("utf-8")[:72], hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def _make_token(uid: str) -> str:
+    payload = {"sub": uid, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)}
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+async def current_user(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Not authenticated")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(401, "Invalid or expired token")
+    user = await db.users.find_one({"id": payload.get("sub")})
+    if not user:
+        raise HTTPException(401, "User not found")
+    return user
+
+
+async def _get_or_create_data(uid: str):
+    doc = await db.user_data.find_one({"user_id": uid})
+    if not doc:
+        doc = {"user_id": uid, "obtained": [], "fav_items": [], "fav_activities": []}
+        await db.user_data.insert_one(dict(doc))
+    return {"obtained": doc.get("obtained", []), "fav_items": doc.get("fav_items", []),
+            "fav_activities": doc.get("fav_activities", [])}
+
+
+@api_router.post("/auth/register")
+async def register(body: RegisterBody):
+    email = body.email.lower().strip()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(400, "An account with this email already exists")
+    uid = str(uuid.uuid4())
+    await db.users.insert_one({
+        "id": uid, "email": email, "password": _hash_pw(body.password),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    await _get_or_create_data(uid)
+    return {"token": _make_token(uid), "user": {"id": uid, "email": email}}
+
+
+@api_router.post("/auth/login")
+async def login(body: LoginBody):
+    email = body.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+    if not user or not _verify_pw(body.password, user["password"]):
+        raise HTTPException(401, "Invalid email or password")
+    return {"token": _make_token(user["id"]), "user": {"id": user["id"], "email": user["email"]}}
+
+
+@api_router.get("/auth/me")
+async def me(user=Depends(current_user)):
+    return {"id": user["id"], "email": user["email"]}
+
+
+@api_router.get("/user/data")
+async def get_user_data(user=Depends(current_user)):
+    return await _get_or_create_data(user["id"])
+
+
+@api_router.put("/user/data")
+async def put_user_data(body: SyncBody, user=Depends(current_user)):
+    await db.user_data.update_one(
+        {"user_id": user["id"]},
+        {"$set": {"obtained": list(set(body.obtained)), "fav_items": list(set(body.fav_items)),
+                  "fav_activities": list(set(body.fav_activities))}},
+        upsert=True,
+    )
+    return await _get_or_create_data(user["id"])
+
+
+@api_router.post("/user/sync")
+async def sync_user_data(body: SyncBody, user=Depends(current_user)):
+    """Union-merge local state into the account (used on login)."""
+    cur = await _get_or_create_data(user["id"])
+    merged = {
+        "obtained": list(set(cur["obtained"]) | set(body.obtained)),
+        "fav_items": list(set(cur["fav_items"]) | set(body.fav_items)),
+        "fav_activities": list(set(cur["fav_activities"]) | set(body.fav_activities)),
+    }
+    await db.user_data.update_one({"user_id": user["id"]}, {"$set": merged}, upsert=True)
+    return merged
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -291,6 +465,12 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _startup():
+    try:
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("id", unique=True)
+        await db.user_data.create_index("user_id", unique=True)
+    except Exception as e:
+        logger.warning("index creation: %s", e)
     await seed_mongo()
 
 

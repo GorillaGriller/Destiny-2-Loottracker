@@ -37,7 +37,7 @@ export const ActivityCard = ({ activity }) => {
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Swords size={13} /> {activity.counts?.weapons || 0} weapons</span>
           <span className="flex items-center gap-1"><Shield size={13} /> {activity.counts?.armor || 0} armor</span>
-          <span>· {activity.encounter_count} bosses</span>
+          {activity.encounter_count ? <span>· {activity.encounter_count} bosses</span> : null}
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">

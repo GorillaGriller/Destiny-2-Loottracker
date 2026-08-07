@@ -4,6 +4,7 @@ import { ArrowRight, Swords, Shield, Sparkles, Boxes, Search as SearchIcon } fro
 import { api } from "@/lib/api";
 import { ActivityCard } from "@/components/ActivityCard";
 import { LoadingGrid } from "@/components/LoadingGrid";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { Button } from "@/components/ui/button";
 
 const Stat = ({ icon: Icon, value, label }) => (
@@ -46,6 +47,7 @@ export default function Home() {
               <Button asChild size="lg" variant="outline" className="gap-2" data-testid="hero-search-button">
                 <Link to="/search"><SearchIcon size={16} /> Search Loot</Link>
               </Button>
+              <RefreshDataButton variant="ghost" size="lg" />
             </div>
           </div>
 

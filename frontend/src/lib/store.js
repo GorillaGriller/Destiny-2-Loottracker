@@ -20,6 +20,16 @@ function getSnapshot() { return cache; }
 
 export function useStore() { return useSyncExternalStore(subscribe, getSnapshot); }
 
+export function getState() { return cache; }
+
+export function replaceState({ obtained, favItems, favActs }) {
+  cache = { obtained: obtained || [], favItems: favItems || [], favActs: favActs || [] };
+  write(KEYS.obtained, cache.obtained);
+  write(KEYS.favItems, cache.favItems);
+  write(KEYS.favActs, cache.favActs);
+  emit();
+}
+
 function toggleIn(key, cacheKey, id) {
   const arr = [...cache[cacheKey]];
   const idx = arr.indexOf(id);

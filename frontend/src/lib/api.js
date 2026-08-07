@@ -4,6 +4,13 @@ const BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export const api = axios.create({ baseURL: BASE });
 
+// Attach JWT (if signed in) to every request
+api.interceptors.request.use((config) => {
+  const t = localStorage.getItem("d2_token");
+  if (t) config.headers.Authorization = `Bearer ${t}`;
+  return config;
+});
+
 // Destiny rarity palette
 export const RARITY = {
   Exotic: { color: "#F6C453", border: "rgba(246,196,83,0.65)", glow: "rgba(246,196,83,0.28)" },
@@ -31,4 +38,6 @@ export function rarityVars(rarity) {
 export const TYPE_META = {
   raid: { label: "Raid", color: "#F6C453" },
   dungeon: { label: "Dungeon", color: "#7FE7FF" },
+  nightfall: { label: "Nightfall", color: "#FF9A3D" },
+  world: { label: "World", color: "#3FE07A" },
 };

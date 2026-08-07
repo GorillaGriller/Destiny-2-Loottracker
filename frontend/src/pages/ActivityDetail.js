@@ -81,17 +81,19 @@ export default function ActivityDetail() {
         </div>
 
         {/* Encounters */}
-        <section className="space-y-4">
-          <h2 className="font-display text-xl font-semibold tracking-tight">Encounters & Boss Drops</h2>
-          {data.encounters.map((enc) => <EncounterSection key={enc.order} encounter={enc} onOpenItem={openItem} />)}
-        </section>
+        {data.encounters?.length ? (
+          <section className="space-y-4">
+            <h2 className="font-display text-xl font-semibold tracking-tight">Encounters & Boss Drops</h2>
+            {data.encounters.map((enc) => <EncounterSection key={enc.order} encounter={enc} onOpenItem={openItem} />)}
+          </section>
+        ) : null}
 
         {/* Shared weapon pool */}
         {data.shared_weapons?.length ? (
           <section className="space-y-4">
             <div>
-              <h2 className="font-display text-xl font-semibold tracking-tight">Additional Weapon Drops</h2>
-              <p className="text-sm text-muted-foreground">Other weapons in this activity's reward pool.</p>
+              <h2 className="font-display text-xl font-semibold tracking-tight">{data.encounters?.length ? "Additional Weapon Drops" : "Weapon Reward Pool"}</h2>
+              <p className="text-sm text-muted-foreground">{data.encounters?.length ? "Other weapons in this activity's reward pool." : "Weapons that can drop from this activity."}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
               {data.shared_weapons.map((it) => <LootItemCard key={it.hash} item={it} onOpen={openItem} />)}

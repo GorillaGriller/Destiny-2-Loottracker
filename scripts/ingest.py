@@ -43,10 +43,28 @@ def fetch_json(url, dest):
 
 
 def load_all():
-    meta = fetch_json(MANIFEST_URL, f"{CACHE_DIR}/meta.json")["Response"]
+    # Always fetch manifest metadata fresh so we can detect version changes.
+    import urllib.request as _u
+    req = _u.Request(MANIFEST_URL, headers={"User-Agent": "d2ingest/1.0"})
+    with _u.urlopen(req, timeout=120) as r:
+        meta = json.loads(r.read().decode())["Response"]
     paths = meta["jsonWorldComponentContentPaths"]["en"]
     version = meta["version"]
     print("Manifest version:", version)
+
+    # Invalidate cached component files when the manifest version changes.
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    vfile = os.path.join(CACHE_DIR, "VERSION")
+    cached_version = None
+    if os.path.exists(vfile):
+        cached_version = open(vfile).read().strip()
+    if cached_version != version:
+        for f in os.listdir(CACHE_DIR):
+            if f.endswith(".json"):
+                try:
+                    os.remove(os.path.join(CACHE_DIR, f))
+                except OSError:
+                    pass
 
     def comp(name):
         return fetch_json(BUNGIE + paths[name], f"{CACHE_DIR}/{name}.json")
@@ -55,6 +73,8 @@ def load_all():
     colls = comp("DestinyCollectibleDefinition")
     dmg = comp("DestinyDamageTypeDefinition")
     acts = comp("DestinyActivityDefinition")
+    with open(vfile, "w") as f:
+        f.write(version)
     return version, items, colls, dmg, acts
 
 
@@ -96,6 +116,8 @@ def project_item(h, v, dmg_defs):
 def find_activity_art(act_defs, activity_match):
     """Return best pgcrImage for the activity name."""
     m = norm(activity_match)
+    if not m:
+        return None
     best = None
     for h, v in act_defs.items():
         name = norm(v.get("displayProperties", {}).get("name"))
