@@ -1,10 +1,10 @@
 [
   {
     "content": "Add Emergent managed Google sign-in (backend session exchange + unified auth + frontend button/callback)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
-    "content": "Test Google auth (cookie session) + regression on JWT/sync via testing agent",
-    "status": "pending"
+    "content": "Test Google auth (cookie session) + regression on JWT/sync via testing agent (100% pass)",
+    "status": "completed"
   }
 ]
