@@ -358,4 +358,27 @@ ACTIVITIES = [
             {"name": "Exotic Mission: Encore", "boss": "The Witness's Echo", "weapons": ["Choir of One"]},
         ],
     },
+    # ============================ CRUCIBLE (PvP RITUALS) ============================
+    {
+        "id": "trials_of_osiris",
+        "name": "Trials of Osiris",
+        "type": "crucible",
+        "location": "The Crucible \u00b7 Weekend",
+        "release": "Weekly Rotator",
+        "activity_match": "trials of osiris",
+        "source_match": ["trials of osiris", "emissary of the nine", "flawless trials"],
+        "description": "The pinnacle of competitive PvP. Win matches on a Trials ticket \u2014 and go Flawless \u2014 to earn the featured weekly weapon and Adept rewards from the Lighthouse.",
+        "encounters": [],
+    },
+    {
+        "id": "iron_banner",
+        "name": "Iron Banner",
+        "type": "crucible",
+        "location": "The Crucible \u00b7 Lord Saladin",
+        "release": "Seasonal Rotator",
+        "activity_match": "iron banner",
+        "source_match": ["iron banner", "lord saladin"],
+        "description": "Lord Saladin's periodic 6v6 power-enabled Crucible event. Play matches and rank up reputation to earn the Iron Banner weapon and armor set.",
+        "encounters": [],
+    },
 ]

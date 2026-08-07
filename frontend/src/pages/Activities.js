@@ -27,6 +27,7 @@ export default function Activities() {
           <TabsTrigger value="raid" data-testid="activities-tab-raids">Raids</TabsTrigger>
           <TabsTrigger value="dungeon" data-testid="activities-tab-dungeons">Dungeons</TabsTrigger>
           <TabsTrigger value="nightfall" data-testid="activities-tab-nightfall">Nightfall</TabsTrigger>
+          <TabsTrigger value="crucible" data-testid="activities-tab-crucible">Crucible</TabsTrigger>
           <TabsTrigger value="world" data-testid="activities-tab-world">World</TabsTrigger>
         </TabsList>
       </Tabs>

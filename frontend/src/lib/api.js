@@ -40,4 +40,5 @@ export const TYPE_META = {
   dungeon: { label: "Dungeon", color: "#7FE7FF" },
   nightfall: { label: "Nightfall", color: "#FF9A3D" },
   world: { label: "World", color: "#3FE07A" },
+  crucible: { label: "Crucible", color: "#FF6B57" },
 };

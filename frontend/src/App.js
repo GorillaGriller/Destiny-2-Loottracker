@@ -10,6 +10,7 @@ import ActivityDetail from "@/pages/ActivityDetail";
 import Search from "@/pages/Search";
 import Checklist from "@/pages/Checklist";
 import Targets from "@/pages/Targets";
+import Rotation from "@/pages/Rotation";
 
 function App() {
   useEffect(() => {
@@ -31,6 +32,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/checklist" element={<Checklist />} />
             <Route path="/targets" element={<Targets />} />
+            <Route path="/rotation" element={<Rotation />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

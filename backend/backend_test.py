@@ -87,25 +87,26 @@ class D2APITester:
 
     def run_all_tests(self):
         print("\n" + "="*70)
-        print("BACKEND API TESTS - PHASE 3+4+5 (World/Nightfall + Refresh + Auth + Google)")
+        print("BACKEND API TESTS - PHASE 6 (Crucible + Rotation + Profile + Merge)")
         print("="*70 + "\n")
 
         # ========== PHASE 3: World & Nightfall Activities ==========
         print("📋 Testing Phase 3: World & Nightfall Activities...")
         
-        # Test 1: Stats should show 22 activities (9 raids, 10 dungeons, 1 nightfall, 2 world)
+        # Test 1: Stats should show 24 activities (9 raids, 10 dungeons, 1 nightfall, 2 world, 2 crucible)
         success, stats_data = self.test(
-            "GET /api/stats (22 activities: 9 raids, 10 dungeons, 1 nightfall, 2 world)",
+            "GET /api/stats (24 activities: 9 raids, 10 dungeons, 1 nightfall, 2 world, 2 crucible)",
             "GET",
             "stats",
             validate=lambda d: (
-                assert_eq(d.get("activities"), 22, "should have 22 activities"),
+                assert_eq(d.get("activities"), 24, "should have 24 activities"),
                 assert_in("by_type", d, "should have by_type"),
                 assert_eq(d.get("by_type", {}).get("raid"), 9, "should have 9 raids"),
                 assert_eq(d.get("by_type", {}).get("dungeon"), 10, "should have 10 dungeons"),
                 assert_eq(d.get("by_type", {}).get("nightfall"), 1, "should have 1 nightfall"),
                 assert_eq(d.get("by_type", {}).get("world"), 2, "should have 2 world activities"),
-                assert_eq(d.get("items"), 546, "should have 546 items"),
+                assert_eq(d.get("by_type", {}).get("crucible"), 2, "should have 2 crucible activities"),
+                assert_eq(d.get("items"), 1020, "should have 1020 items"),
             )
         )
         if success and stats_data:
@@ -206,6 +207,60 @@ class D2APITester:
         )
         if success and nightfall_ordeal:
             print(f"   ✓ Nightfall: The Ordeal - {len(nightfall_ordeal.get('shared_weapons', []))} weapons in pool")
+
+        # ========== PHASE 6: Crucible Activities (Trials + Iron Banner) ==========
+        print("\n📋 Testing Phase 6: Crucible Activities...")
+        
+        # Test: List crucible activities
+        success, crucible_list = self.test(
+            "GET /api/activities?type=crucible",
+            "GET",
+            "activities",
+            params={"type": "crucible"},
+            validate=lambda d: (
+                assert_eq(d.get("total"), 2, "should have 2 crucible activities"),
+                assert_eq(len(d.get("activities", [])), 2, "should return 2 crucible activities"),
+            )
+        )
+        if success and crucible_list:
+            for c in crucible_list["activities"]:
+                print(f"   ✓ Crucible activity: {c.get('name')}")
+                print(f"      - Banner: {'present' if c.get('banner') else 'missing'}")
+                print(f"      - Weapons: {c.get('counts', {}).get('weapons', 0)}, Armor: {c.get('counts', {}).get('armor', 0)}")
+
+        # Test: Trials of Osiris detail
+        success, trials = self.test(
+            "GET /api/activities/trials_of_osiris",
+            "GET",
+            "activities/trials_of_osiris",
+            validate=lambda d: (
+                assert_eq(d.get("id"), "trials_of_osiris", "should have correct id"),
+                assert_eq(d.get("name"), "Trials of Osiris", "should have correct name"),
+                assert_eq(d.get("type"), "crucible", "should be type crucible"),
+                assert_eq(len(d.get("encounters", [])), 0, "should have empty encounters (no bosses in PvP)"),
+                assert_gt(len(d.get("shared_weapons", [])), 0, "should have shared_weapons pool"),
+                assert_gt(len(d.get("armor", [])), 0, "should have armor set"),
+            )
+        )
+        if success and trials:
+            print(f"   ✓ Trials of Osiris: {len(trials.get('shared_weapons', []))} weapons, {len(trials.get('armor', []))} armor pieces")
+
+        # Test: Iron Banner detail
+        success, iron_banner = self.test(
+            "GET /api/activities/iron_banner",
+            "GET",
+            "activities/iron_banner",
+            validate=lambda d: (
+                assert_eq(d.get("id"), "iron_banner", "should have correct id"),
+                assert_eq(d.get("name"), "Iron Banner", "should have correct name"),
+                assert_eq(d.get("type"), "crucible", "should be type crucible"),
+                assert_eq(len(d.get("encounters", [])), 0, "should have empty encounters (no bosses in PvP)"),
+                assert_gt(len(d.get("shared_weapons", [])), 0, "should have shared_weapons pool"),
+                assert_gt(len(d.get("armor", [])), 0, "should have armor set"),
+            )
+        )
+        if success and iron_banner:
+            print(f"   ✓ Iron Banner: {len(iron_banner.get('shared_weapons', []))} weapons, {len(iron_banner.get('armor', []))} armor pieces")
 
         # ========== PHASE 3: Live Manifest Refresh ==========
         print("\n📋 Testing Phase 3: Live Manifest Refresh...")
@@ -615,8 +670,8 @@ print('USER_ID:' + userId);
             use_auth=False,
             validate=lambda d: (
                 assert_eq(d.get("status"), "ok", "status should be 'ok'"),
-                assert_eq(d.get("activities"), 22, "should have 22 activities"),
-                assert_eq(d.get("items"), 546, "should have 546 items"),
+                assert_eq(d.get("activities"), 24, "should have 24 activities"),
+                assert_eq(d.get("items"), 1020, "should have 1020 items"),
             )
         )
 
@@ -635,12 +690,12 @@ print('USER_ID:' + userId);
 
         # Test 21: List all activities
         self.test(
-            "GET /api/activities (all 22)",
+            "GET /api/activities (all 24)",
             "GET",
             "activities",
             use_auth=False,
             validate=lambda d: (
-                assert_eq(d.get("total"), 22, "should have 22 total activities"),
+                assert_eq(d.get("total"), 24, "should have 24 total activities"),
             )
         )
 

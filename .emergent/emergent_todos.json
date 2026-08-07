@@ -1,10 +1,22 @@
 [
   {
-    "content": "Add Emergent managed Google sign-in (backend session exchange + unified auth + frontend button/callback)",
+    "content": "Trials & Iron Banner PvP pools (crucible type + tab, re-ingest -> 24 activities/1020 items)",
     "status": "completed"
   },
   {
-    "content": "Test Google auth (cookie session) + regression on JWT/sync via testing agent (100% pass)",
+    "content": "Merge Prompt on Google/email sign-in (ask before merging local into account)",
     "status": "completed"
+  },
+  {
+    "content": "Profile Menu dropdown (avatar -> email, sync status, checklist, sign out)",
+    "status": "completed"
+  },
+  {
+    "content": "Rotation Tracker page (accurate reset countdowns + rotating activities)",
+    "status": "completed"
+  },
+  {
+    "content": "End-to-end testing via testing agent (4 features + regression)",
+    "status": "in_progress"
   }
 ]

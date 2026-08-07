@@ -1,18 +1,19 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Search, Hexagon, ListChecks, LogOut, User as UserIcon } from "lucide-react";
+import { Search, Hexagon, ListChecks, User as UserIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { AuthDialog } from "@/components/AuthDialog";
+import { ProfileMenu } from "@/components/ProfileMenu";
 
 export const Header = () => {
   const [q, setQ] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
   const { obtained } = useStore();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const submit = (e) => {
     e.preventDefault();
@@ -32,6 +33,7 @@ export const Header = () => {
 
         <nav className="ml-2 hidden items-center gap-5 md:flex">
           <NavLink to="/activities" className={linkCls} data-testid="nav-activities-link">Activities</NavLink>
+          <NavLink to="/rotation" className={linkCls} data-testid="nav-rotation-link">Rotation</NavLink>
           <NavLink to="/search" className={linkCls} data-testid="nav-search-link">Search</NavLink>
           <NavLink to="/targets" className={linkCls} data-testid="nav-targets-link">Targets</NavLink>
           <NavLink to="/checklist" className={linkCls} data-testid="nav-checklist-link">Checklist</NavLink>
@@ -51,15 +53,7 @@ export const Header = () => {
         </Link>
 
         {user ? (
-          <div className="flex items-center gap-2">
-            {user.picture ? (
-              <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full border border-white/15 object-cover" />
-            ) : null}
-            <span data-testid="header-user-email" className="hidden max-w-[150px] truncate text-xs text-muted-foreground sm:inline">{user.name || user.email}</span>
-            <Button variant="ghost" size="icon" data-testid="logout-button" aria-label="Sign out" onClick={logout} className="h-8 w-8">
-              <LogOut size={15} />
-            </Button>
-          </div>
+          <ProfileMenu />
         ) : (
           <Button variant="secondary" size="sm" data-testid="signin-button" onClick={() => setAuthOpen(true)} className="gap-1.5">
             <UserIcon size={14} /> Sign In
